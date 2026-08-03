@@ -1,0 +1,33 @@
+# ASPIS monorepo — root .gitignore
+# Product-specific ignores (Angular's node_modules/dist etc.) live in apps/web/.gitignore.
+# This file covers everything else that isn't ecosystem-specific to one app.
+
+# .NET (apps/api, apps/twin-orchestrator once it has content)
+bin/
+obj/
+*.user
+.vs/
+
+# C++ (apps/sim-engine, once it has content)
+build/
+cmake-build-*/
+*.o
+*.obj
+
+# Python (apps/ai-services, once it has content)
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Editors / OS
+.vscode/*
+!.vscode/settings.json
+.idea/
+.DS_Store
+Thumbs.db
+
+# Secrets — never commit these regardless of folder
+*.env
+.env.*
+appsettings.*.local.json

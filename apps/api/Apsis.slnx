@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="Apsis.Api.Tests/Apsis.Api.Tests.csproj" />
+  <Project Path="Apsis.Api/Apsis.Api.csproj" />
+</Solution>
