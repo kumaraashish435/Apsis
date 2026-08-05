@@ -1,0 +1,84 @@
+.top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1.5rem;
+  background: linear-gradient(180deg, #0b1220 0%, #0a0f1a 100%);
+  border-bottom: 1px solid rgba(56, 189, 248, 0.15);
+  color: #e2e8f0;
+  font-family: inherit;
+  
+}
+
+.top-bar__brand {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.top-bar__title {
+  font-size: 0.9rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: #f1f5f9;
+}
+
+.top-bar__divider {
+  color: rgba(148, 163, 184, 0.4);
+  font-weight: 300;
+}
+
+.top-bar__subtitle {
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  color: #38bdf8;
+}
+
+.top-bar__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.top-bar__icon-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border: none;
+  border-radius: 0.5rem;
+  background: transparent;
+  color: #94a3b8;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+
+  svg {
+    width: 1.15rem;
+    height: 1.15rem;
+  }
+
+  &:hover,
+  &:focus-visible {
+    background: rgba(56, 189, 248, 0.12);
+    color: #38bdf8;
+  }
+
+  &:focus-visible {
+    outline: 2px solid #38bdf8;
+    outline-offset: 2px;
+  }
+}
+
+.top-bar__badge {
+  position: absolute;
+  top: 0.4rem;
+  right: 0.4rem;
+  width: 0.4rem;
+  height: 0.4rem;
+  border-radius: 50%;
+  background: #ef4444;
+  box-shadow: 0 0 4px rgba(239, 68, 68, 0.8);
+}

@@ -6,6 +6,7 @@ import { createScene } from './scene/scene';
 import { createCamera } from './camera/camera';
 import { createRenderer } from './renderer/renderer';
 import { createOrbitControls } from './camera/orbit-controls';
+import { OrbitControlsGate } from './input/orbit-controls-gate';
 import { ResizeHandler } from './renderer/resize';
 import { AnimationLoop } from './renderer/animation-loop';
 import { createEarth } from './earth/earth';
@@ -41,6 +42,12 @@ export class EarthView implements AfterViewInit, OnDestroy {
 
   private animationLoop!: AnimationLoop;
   private resizeHandler!: ResizeHandler;
+  private orbitControlsGate!: OrbitControlsGate;
+
+  // Objects OrbitControls is allowed to engage on — see OrbitControlsGate.
+  // Push satellite groups in here too once they're wired up, so drag/scroll
+  // works on them as well as Earth.
+  private readonly interactiveObjects: THREE.Object3D[] = [];
 
   private readonly simulation = new Simulation(600);
 
@@ -61,9 +68,17 @@ export class EarthView implements AfterViewInit, OnDestroy {
     this.earthSpin = new THREE.Group();
     this.earthSpin.add(createEarth());
     this.earthTilt.add(this.earthSpin);
+    this.interactiveObjects.push(this.earthTilt);
 
     const { ambient, sun } = createLights();
     this.scene.add(ambient, sun);
+
+    this.orbitControlsGate = new OrbitControlsGate(
+      this.controls,
+      this.camera,
+      this.renderer.domElement,
+      () => this.interactiveObjects,
+    );
 
     this.resizeHandler = new ResizeHandler(el, this.camera, this.renderer, () =>
       this.controls.update(),
