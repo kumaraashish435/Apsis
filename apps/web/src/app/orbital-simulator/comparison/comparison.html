@@ -1,4 +1,97 @@
 <section class="page">
-  <h1>Propagator Comparison</h1>
-  <p>SGP4 vs. Keplerian divergence plot goes here — fast-follow, not required for MVP launch.</p>
+  <div class="page__header">
+    <div>
+      <div class="page__title">Propagator comparison</div>
+      <div class="page__subtitle">SGP4 vs. an unperturbed two-body (Keplerian) model, starting from the same orbit</div>
+    </div>
+  </div>
+
+  @if (tleSimulations().length === 0) {
+    <div class="empty-state">
+      <p>No TLE-based simulations yet.</p>
+      <p>Comparison needs a TLE — <a routerLink="/simulator/simulations/new">create one</a> first.</p>
+    </div>
+  } @else {
+    <div class="card">
+      <div class="form-field">
+        <label for="simSelect">Simulation</label>
+        <select id="simSelect" [value]="selectedId()" (change)="select($any($event.target).value)">
+          @for (sim of tleSimulations(); track sim.id) {
+            <option [value]="sim.id">{{ sim.name }}</option>
+          }
+        </select>
+      </div>
+
+      @if (errorMessage()) {
+        <div class="error-banner" role="alert">{{ errorMessage() }}</div>
+      } @else if (loading()) {
+        <p class="page__subtitle">Comparing…</p>
+      } @else if (divergence()) {
+        <h2 class="chart-title">Position divergence over time</h2>
+        <svg
+          class="chart"
+          [attr.viewBox]="'0 0 ' + chartWidth + ' ' + chartHeight"
+          #svgEl
+          (mousemove)="onHover($event, svgEl)"
+          (mouseleave)="clearHover()"
+        >
+          <!-- gridlines -->
+          @for (tick of yTicks(); track tick) {
+            <line
+              class="chart__grid"
+              [attr.x1]="margin.left"
+              [attr.x2]="chartWidth - margin.right"
+              [attr.y1]="yFor(tick)"
+              [attr.y2]="yFor(tick)"
+            />
+            <text class="chart__tick chart__tick--y" [attr.x]="margin.left - 8" [attr.y]="yFor(tick) + 3">
+              {{ tick | number: '1.0-1' }}
+            </text>
+          }
+          @for (tick of xTicks(); track tick) {
+            <text class="chart__tick chart__tick--x" [attr.x]="xFor(tick)" [attr.y]="chartHeight - 8">
+              {{ formatMinutes(tick) }}
+            </text>
+          }
+
+          <!-- axis lines -->
+          <line
+            class="chart__axis"
+            [attr.x1]="margin.left"
+            [attr.x2]="margin.left"
+            [attr.y1]="margin.top"
+            [attr.y2]="chartHeight - margin.bottom"
+          />
+          <line
+            class="chart__axis"
+            [attr.x1]="margin.left"
+            [attr.x2]="chartWidth - margin.right"
+            [attr.y1]="chartHeight - margin.bottom"
+            [attr.y2]="chartHeight - margin.bottom"
+          />
+
+          <path [attr.d]="linePath()" class="chart__line" />
+
+          @if (hoverPoint(); as hp) {
+            <line
+              class="chart__crosshair"
+              [attr.x1]="xFor(hp.epochSeconds)"
+              [attr.x2]="xFor(hp.epochSeconds)"
+              [attr.y1]="margin.top"
+              [attr.y2]="chartHeight - margin.bottom"
+            />
+            <circle [attr.cx]="xFor(hp.epochSeconds)" [attr.cy]="yFor(hp.distanceKm)" r="3.5" class="chart__dot" />
+          }
+        </svg>
+
+        @if (hoverPoint(); as hp) {
+          <div class="chart-tooltip">
+            {{ formatMinutes(hp.epochSeconds) }} — {{ hp.distanceKm | number: '1.2-2' }} km apart
+          </div>
+        } @else {
+          <div class="chart-tooltip chart-tooltip--muted">Hover the chart to inspect a point.</div>
+        }
+      }
+    </div>
+  }
 </section>

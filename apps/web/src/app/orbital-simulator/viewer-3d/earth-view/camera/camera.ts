@@ -19,36 +19,46 @@ export function createCamera(aspect: number): THREE.PerspectiveCamera {
  * near-zoom limit inside Earth's own surface. Pass Earth's actual scene
  * radius (see earth-view.ts's refitCamera) so the camera can never clip
  * through the mesh regardless of how far out the tracked satellites are.
+ *
+ * forceFit=true (the default, and what earth-view.ts uses when a simulation's
+ * satellite loads) always repositions the camera to frame the sphere exactly
+ * — not just when the current position happens to fall outside the new
+ * bounds — since "just loaded a GEO orbit while still parked at the default
+ * near-Earth camera distance" is exactly the case this exists to handle, and
+ * that case never falls outside the max-distance bound on its own (the bound
+ * only ever grows to accommodate a wider orbit, it doesn't pull the camera in
+ * to meet it). Pass forceFit=false for a softer "just clamp, don't yank the
+ * camera" behavior if some future caller wants that instead.
  */
-// export function fitCameraToBoundingSphere(
-//   camera: THREE.PerspectiveCamera,
-//   controls: OrbitControls,
-//   sphere: THREE.Sphere,
-//   minDistanceFloor: number,
-//   padding = 1.4,
-// ): void {
-//   const verticalFovRad = THREE.MathUtils.degToRad(camera.fov);
-//   const horizontalFovRad = 2 * Math.atan(Math.tan(verticalFovRad / 2) * camera.aspect);
-//   const limitingFovRad = Math.min(verticalFovRad, horizontalFovRad);
+export function fitCameraToBoundingSphere(
+  camera: THREE.PerspectiveCamera,
+  controls: OrbitControls,
+  sphere: THREE.Sphere,
+  minDistanceFloor: number,
+  padding = 1.4,
+  forceFit = true,
+): void {
+  const verticalFovRad = THREE.MathUtils.degToRad(camera.fov);
+  const horizontalFovRad = 2 * Math.atan(Math.tan(verticalFovRad / 2) * camera.aspect);
+  const limitingFovRad = Math.min(verticalFovRad, horizontalFovRad);
 
-//   const fitDistance = (sphere.radius * padding) / Math.sin(limitingFovRad / 2);
+  const fitDistance = (sphere.radius * padding) / Math.sin(limitingFovRad / 2);
 
-//   controls.target.copy(sphere.center);
-//   controls.maxDistance = Math.max(fitDistance, minDistanceFloor * 1.5);
-//   controls.minDistance = minDistanceFloor;
+  controls.target.copy(sphere.center);
+  controls.maxDistance = Math.max(fitDistance, minDistanceFloor * 1.5);
+  controls.minDistance = minDistanceFloor;
 
-//   const currentDistance = camera.position.distanceTo(controls.target);
-//   if (currentDistance > controls.maxDistance || currentDistance < controls.minDistance) {
-//     const direction = camera.position.clone().sub(controls.target);
-//     if (direction.lengthSq() === 0) direction.set(0, 0.3, 1);
-//     direction.normalize();
-//     const clampedDistance = THREE.MathUtils.clamp(
-//       currentDistance,
-//       controls.minDistance,
-//       controls.maxDistance,
-//     );
-//     camera.position.copy(sphere.center).add(direction.multiplyScalar(clampedDistance));
-//   }
+  const currentDistance = camera.position.distanceTo(controls.target);
+  const outOfBounds = currentDistance > controls.maxDistance || currentDistance < controls.minDistance;
+  if (forceFit || outOfBounds) {
+    const direction = camera.position.clone().sub(controls.target);
+    if (direction.lengthSq() === 0) direction.set(0, 0.3, 1);
+    direction.normalize();
+    const targetDistance = forceFit
+      ? THREE.MathUtils.clamp(fitDistance, controls.minDistance, controls.maxDistance)
+      : THREE.MathUtils.clamp(currentDistance, controls.minDistance, controls.maxDistance);
+    camera.position.copy(sphere.center).add(direction.multiplyScalar(targetDistance));
+  }
 
-//   controls.update();
-// }
+  controls.update();
+}

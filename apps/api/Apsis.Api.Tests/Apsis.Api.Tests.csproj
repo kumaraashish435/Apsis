@@ -22,4 +22,8 @@
     <ProjectReference Include="..\Apsis.Api\Apsis.Api.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Include="Propagation\testdata\**" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>

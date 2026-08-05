@@ -1,9 +1,10 @@
 # earth-view — the 3D orbital viewer
 
-This is Product 1's working 3D simulation: a Three.js scene (Earth, atmosphere, clouds,
-starfield, camera + controls) with satellites orbiting on top, wrapped in an Angular
-component with a HUD overlay (satellite list, selection detail, play/pause, time-scale).
-It's what renders at `/simulator/simulations/:id/view` (see `viewer-3d/`, one level up).
+Product 1's working 3D scene: a Three.js Earth (textures, atmosphere, clouds, starfield,
+camera + damped orbit controls) with real propagated satellite tracks rendered on top,
+wrapped in an Angular component. It's what renders at
+`/simulator/simulations/:id/view` (see `viewer-3d.ts`, one level up, and
+`../ground-track/` for this same page's 2D alternative view).
 
 Every file below is small and does one job — that's deliberate, not accidental
 fragmentation: `earth-view.ts` is the only file that knows about all of them, so any one
@@ -14,7 +15,7 @@ and changed without reading the rest.
 
 ```
 earth-view.ts  (orchestrator — the only file that imports from every folder below)
- ├─ scene/scene.ts          → THREE.Scene + starfield (Moon helpers exist, unused for now)
+ ├─ scene/scene.ts          → THREE.Scene + starfield (Moon helpers exist, unused — see below)
  ├─ camera/camera.ts        → PerspectiveCamera + fitCameraToBoundingSphere()
  ├─ camera/orbit-controls.ts→ OrbitControls (drag-to-orbit, scroll-to-zoom)
  ├─ renderer/renderer.ts    → WebGLRenderer, sized to the container
@@ -26,75 +27,80 @@ earth-view.ts  (orchestrator — the only file that imports from every folder be
  ├─ earth/lights.ts         → ambient + directional "sun" light
  ├─ earth/textures.ts       → texture loading (color-space handling, missing-file fallback)
  ├─ satellite/*             → Orbit (state-vector interpolation), Satellite (mesh + line),
- │                            SatelliteManager (add/remove/update/select many satellites)
+ │                            SatelliteManager (add/remove/update many satellites)
  ├─ simulation/*             → sim clock: real seconds → scaled "mission" seconds, pause/resume
- ├─ input/*                  → mouse position, keyboard, click-to-pick raycasting
+ ├─ input/*                  → mouse/keyboard/raycaster building blocks — not wired into
+ │                            earth-view.ts yet, see "What's not built" below
  └─ utils/*                  → shared constants, km↔scene-unit conversion, disposal, demo data
 ```
 
-`earth-view.html`/`.scss` add the HUD overlay on top of the canvas. `earth-view.ts` is a
-plain Angular component (`AfterViewInit`/`OnDestroy`) — Three.js itself doesn't know
-Angular exists; the component is just the glue that creates the scene once, drives it every
-frame, and tears it down when the route changes.
+`earth-view.ts` is a plain Angular component (`AfterViewInit`/`OnDestroy`) — Three.js
+itself doesn't know Angular exists; the component is just the glue that creates the scene
+once, drives it every frame, and tears it down when the route changes.
 
 ## File-by-file: what and why
 
 ### Orchestration
 
 **`earth-view.ts`** — Creates every module above once in `ngAfterViewInit`, wires them
-together, and owns the per-frame update (`onFrame`) and the HUD's reactive state (Angular
-`signal`s). Three things worth understanding about *why* it's built the way it is:
+together, and owns the per-frame update (`onFrame`). Takes real satellite data via an
+`input()` signal (`satellites: SatelliteEntry[]`) — `viewer-3d.ts` fetches
+`GET /api/v1/simulations/{id}/propagate` and passes the result straight in; this component
+has no knowledge of the API, HTTP, or routing, it just renders whatever track it's handed.
+Three things worth understanding about *why* it's built the way it is:
 
 - **The render loop runs outside Angular's zone.** `requestAnimationFrame` fires ~60 times a
   second; if that ran inside Angular's zone, every frame would trigger a full
   change-detection pass for the whole component tree, for no reason (nothing template-bound
   changes on every single frame). `zone.runOutsideAngular(...)` wraps only the
   `AnimationLoop.start()` call, so Three.js renders freely without Angular watching.
-- **The HUD is refreshed on a timer, not every frame.** Reading `simSeconds` and updating
-  signals 60×/sec would just re-introduce the same change-detection cost the zone trick
-  avoids. `onFrame` accumulates real time and only calls `zone.run(() => this.refreshHud(...))`
-  every `HUD_REFRESH_INTERVAL_SECONDS` (0.2s = 5×/sec) — smooth enough for a readable
-  altitude/mission-time display, cheap enough to not matter.
 - **Earth's tilt and spin are two separate nested `THREE.Group`s**, not one group's
   Euler rotation. `earthTilt` is set once (axial tilt, 23.44°) and never touched again;
   `earthSpin` is its *child* and gets `.rotation.y` updated every frame. Because a child's
   local Y axis is inherited from its already-tilted parent, spinning it can only ever
-  rotate around the tilted axis — this was a real bug fix (see git history): mixing tilt
-  and spin into one Euler's `x`/`y`/`z` components is rotation-order-fragile and produced a
-  level-looking spin instead of a tilted one.
-
-Satellites are parented directly to `scene`, **not** to `earthTilt`/`earthSpin` — their
-state-vector positions are Earth-centered-inertial, so they must not inherit Earth's own
-spin animation the way the atmosphere/clouds correctly do.
+  rotate around the tilted axis — mixing a constant tilt and a per-frame spin into one
+  group's Euler `x`/`y`/`z` components is rotation-order-fragile and was previously
+  producing a level-looking spin instead of a tilted one (see git history).
+- **Satellites are parented to `earthTilt`, not `earthSpin`.** Their state-vector positions
+  are Earth-centered-inertial (ECI/TEME) — they must inherit Earth's constant axial tilt
+  (so the orbital plane is oriented correctly relative to the equator) but must **not**
+  inherit Earth's per-frame rotation, or a satellite's rendered position would incorrectly
+  spin along with the ground beneath it.
+- **The camera auto-fits to whatever's tracked, forcefully, every time the satellite set
+  changes.** `applySatellites()` computes the scene-unit distance of every point in every
+  track and calls `fitCameraToBoundingSphere()` with `forceFit=true` (the default — see
+  `camera/camera.ts`'s doc comment for why a "just clamp" mode wouldn't be enough here):
+  the default camera position is tuned for a near-Earth view, so loading a GEO-altitude
+  simulation without forcing a reposition would leave the satellite far outside the frame.
 
 ### scene/
 
 **`scene.ts`** — Creates the `THREE.Scene` and a starfield (`THREE.Points`, random
 directions on a large sphere — cheap and good enough, not a real star catalog). Also
-exports `createMoon()`/`updateMoon()`, a simplified circular Moon — built but **not** wired
-into `earth-view.ts` yet. It's excluded on purpose: at a true-to-scale distance (~60 scene
-units) it would force the camera's auto-fit distance so far out that near-Earth satellite
-orbits become indistinguishable from Earth itself. Worth adding once the viewer supports
-toggling "what's currently tracked" rather than always fitting everything at once.
+exports `createMoon()`/`updateMoon()`, a simplified circular Moon — built but **not** called
+from `earth-view.ts`. Excluded on purpose: at a true-to-scale distance (~60 scene units) it
+would force the camera's auto-fit distance so far out that near-Earth satellite orbits
+become indistinguishable from Earth itself. Worth adding once the viewer supports toggling
+"what's currently tracked" rather than always fitting everything at once.
 
 ### camera/
 
 **`camera.ts`** — `createCamera()` sets a sane default FOV/near/far and starting position.
 `fitCameraToBoundingSphere()` is the auto-fit: given a bounding sphere of everything
-currently in the scene worth looking at, it sets `controls.minDistance`/`maxDistance` so the
-user can never zoom out past "everything fits" or in past "you're inside the Earth mesh."
-`minDistanceFloor` is a separate parameter from the sphere's own radius — a satellite's
-orbit (especially the GEO demo satellite, ~6.6 Earth radii out) inflates the bounding
-sphere far past Earth's actual size, so deriving the near-zoom limit from that sphere would
-let the camera clip straight through the planet. Passing `SCENE_EARTH_RADIUS * 1.05`
-explicitly keeps the near limit anchored to Earth's real size regardless of how wide the
-tracked orbits are.
+currently tracked, it sets `controls.minDistance`/`maxDistance` so the user can never zoom
+out past "everything fits" or in past "you're inside the Earth mesh," and (with
+`forceFit=true`, the default) repositions the camera to frame that sphere immediately
+rather than only when the camera happens to already be out of bounds. `minDistanceFloor` is
+a separate parameter from the sphere's own radius — a satellite's orbit (a GEO satellite
+sits ~6.6 Earth radii out) inflates the bounding sphere far past Earth's actual size, so
+deriving the near-zoom limit from that sphere would let the camera clip straight through
+the planet. `earth-view.ts` passes `SCENE_EARTH_RADIUS * 1.3` explicitly, keeping the near
+limit anchored to Earth's real size regardless of how wide the tracked orbit is.
 
 **`orbit-controls.ts`** — Wraps `OrbitControls` with damping enabled and panning disabled
 (this is an "orbit a planet" viewer, not a free-fly camera). Its hardcoded
-`minDistance`/`maxDistance` are just the *pre-auto-fit* fallback, immediately overwritten
-by `fitCameraToBoundingSphere()` once `earth-view.ts` calls `refitCamera()` after satellites
-are added.
+`minDistance`/`maxDistance` are just the *pre-auto-fit* fallback, immediately overwritten by
+`fitCameraToBoundingSphere()` the first time satellites load.
 
 ### renderer/
 
@@ -104,10 +110,9 @@ pixel resolution rather than device pixel resolution; a reasonable perf/sharpnes
 trade-off for a scene where you're rarely reading fine texture detail.
 
 **`resize.ts`** — A `ResizeObserver` on the container div (not `window`) — correct even if
-the canvas is resized by something other than the browser window (e.g. a future layout
-change that shrinks the viewer panel without the window itself resizing). Updates the
-camera's aspect ratio and the renderer's size, then calls an optional callback
-(`earth-view.ts` uses it to re-run `controls.update()`).
+the canvas is resized by something other than the browser window. Updates the camera's
+aspect ratio and the renderer's size, then calls an optional callback (`earth-view.ts` uses
+it to re-run `controls.update()`).
 
 **`animation-loop.ts`** — Owns the `requestAnimationFrame` bookkeeping (frame id,
 start/stop, delta-time calculation) so `earth-view.ts` doesn't hand-roll it. `stop()` is
@@ -121,131 +126,99 @@ by convention — see `utils/constants.ts`) with the day-texture map.
 
 **`atmosphere.ts`** — A slightly larger sphere, back-face rendered with additive blending
 and low opacity — a standard cheap "atmosphere glow" trick, not a physically based
-scattering model. Added to `earthTilt` (not `earthSpin`) since a symmetric translucent
-shell looks identical whether or not it's spinning — no reason to pay for the extra
-transform.
+scattering model.
 
-**`clouds.ts`** — An alpha-mapped sphere just outside the Earth mesh. It starts `visible =
+**`clouds.ts`** — An alpha-mapped sphere just outside the Earth mesh. Starts `visible =
 false` and only flips to `true` once `public/textures/earth_clouds.png` actually loads —
-so a missing texture file degrades gracefully to "no clouds" instead of showing a broken
-opaque sphere covering the whole planet. (No cloud texture is checked into the repo yet;
-drop one at that path and it'll appear automatically, no code change needed.)
+so a missing texture file degrades to "no clouds" instead of a broken opaque sphere.
 
 **`lights.ts`** — Ambient light (so the night side isn't pure black) plus one directional
 "sun" light.
 
-**`textures.ts`** — Two loader functions: `loadColorTexture()` sets `colorSpace =
-THREE.SRGBColorSpace` explicitly (Three.js 0.150+ requires this or color maps render
-washed out) and logs load errors. `loadDataTexture()` is for non-color maps (like the cloud
-alpha map) — no color-space conversion, and it fails *silently*, because that texture is
-allowed to not exist yet.
+**`textures.ts`** — `loadColorTexture()` sets `colorSpace = THREE.SRGBColorSpace`
+explicitly (Three.js 0.150+ requires this or color maps render washed out) and logs load
+errors. `loadDataTexture()` is for non-color maps (like the cloud alpha map) — no
+color-space conversion, and it fails *silently*, because that texture is allowed to not
+exist yet.
 
 ### satellite/
 
-**`orbit.ts`** — `SatelliteStateVector` is deliberately shaped to match the backend's
-`StateVector` record (`apps/api/.../Propagation/Sgp4/ISgp4Propagator.cs`) so swapping demo
-data for a real backend response requires no reshaping. `Orbit` converts a state-vector
-series into scene-unit points and linearly interpolates position between the two nearest
-samples for any given simulated time, wrapping around the orbit's own period. Good enough
-for visualization at typical sample spacing; not a substitute for re-querying the backend
-if a use case ever needs sub-sample precision client-side.
+**`orbit.ts`** — `SatelliteStateVector` (`epochSeconds`/`xKm`/`yKm`/`zKm`) is deliberately
+shaped to match the *position* subset of the backend's `StateVectorResponse` — see
+`../viewer-3d.ts`'s `toSceneStates()`, which strips velocity/lat/lon before handing data in
+here, since this component only needs position. `Orbit` converts a state-vector series into
+scene-unit points and linearly interpolates position between the two nearest samples for
+any given simulated time, wrapping around the orbit's own period.
 
 **`orbit-renderer.ts`** — Builds the visible orbit-path line from an `Orbit`'s points.
 
 **`satellite.ts`** — One satellite: an orbit line + a moving marker mesh. `update(simSeconds)`
-repositions the marker each frame. `setSelected()` is the click-to-inspect visual
-feedback — scales the marker up and brightens both the marker and its orbit line; the HUD
-and the 3D click-pick both call it through `SatelliteManager`, so "selected" always means
-the same thing regardless of which UI element triggered it. `altitudeKmAt()` converts the
-current scene-unit position back to a km altitude above Earth's surface — used by the HUD's
-live altitude readout.
+repositions the marker each frame.
 
-**`satellite-manager.ts`** — Add/remove/update/select many satellites without
-`earth-view.ts` touching individual `Satellite` instances directly. `addSatellite()` is
-where real propagated data plugs in later: once `GET /api/v1/simulations/{id}/propagate`
-returns real `StateVector[]` arrays, calling this with that data instead of
-`generateDemoCircularOrbit()`'s output is the entire integration — nothing downstream
-(rendering, HUD, camera fit) needs to change, because the shape is identical by design.
+**`satellite-manager.ts`** — `SatelliteEntry` (`{ name, states }`) is the shape
+`earth-view.ts`'s `satellites` input expects. `addSatellite()`/`removeSatellite()`/`dispose()`
+let `earth-view.ts` swap the whole tracked set (e.g. when the user navigates to a different
+simulation) without touching individual `Satellite` instances directly.
 
 ### simulation/
 
 **`clock.ts`** — Tracks elapsed *simulated* seconds, independent of wall-clock time;
-supports pause/resume.
+supports pause/resume (not currently exposed in the UI — the clock always runs).
 
 **`time.ts`** — `toSimSeconds()` scales real elapsed seconds by a `timeScale` multiplier
-(e.g. `timeScale=600` means one real second plays back ten simulated minutes — that's why a
-GEO satellite with an ~24h real period visibly completes an orbit in under two and a half
-real minutes). `formatMissionTime()` renders elapsed seconds as `HH:MM:SS` for the HUD.
+(`earth-view.ts` uses 600: one real second plays back ten simulated minutes). Also exports
+`formatMissionTime()` (`HH:MM:SS` formatting) — written for a future on-screen mission-time
+readout, not currently called from anywhere.
 
 **`simulation.ts`** — Combines the two: real delta-time in, scaled sim-time out. Both
 Earth's rotation and every satellite's position are driven from this single clock, not
-from wall-clock time directly — pausing or changing speed moves everything in the scene
-together, consistently.
+from wall-clock time directly — pausing or changing speed (if exposed later) would move
+everything in the scene together, consistently.
 
 ### input/
 
-**`mouse.ts`** — Tracks pointer position in normalized device coordinates (needed by
-Three.js's raycaster).
-
-**`keyboard.ts`** — A simple key → handler registry. `earth-view.ts` binds the space bar to
-pause/resume.
-
-**`raycaster.ts`** — `pickObject()`: given the camera, pointer NDC, and a list of
-candidate objects, returns whichever one the ray actually hits (or `null`).
-
-**`input-manager.ts`** — Wires mouse + keyboard + raycaster together and exposes an
-`onObjectClick` event. Picking is intentionally lazy — `pickableObjects()` is a callback
-invoked at click time, not a cached list, so it always sees the current set of satellite
-groups even as they're added or removed later.
-
-`earth-view.ts` interprets a click hit by checking the object's `name` for the
-`satellite-marker:<id>` prefix set in `satellite.ts` — clicking an orbit *line* (which has
-no name) or empty space both resolve to "no satellite," which deselects whatever was
-selected. Clicking the *same* satellite twice also deselects it (see `selectSatellite()`).
+**`mouse.ts`**, **`keyboard.ts`**, **`raycaster.ts`**, **`input-manager.ts`** — Building
+blocks for pointer tracking, a key→handler registry, and object picking. **Not currently
+wired into `earth-view.ts`** — the only picking that happens today is `OrbitControlsGate`'s
+own internal raycast (camera/orbit-controls-gate.ts, gating drag/zoom to "pointer is over
+Earth or a satellite" so scrolling over empty space doesn't zoom the camera). Click-to-select
+a specific satellite for a detail readout would build on these files, but that's not built.
 
 ### utils/
 
 **`constants.ts`** — Every shared number in one place: Earth's real radius in km, the
 scene-unit convention (`SCENE_EARTH_RADIUS = 1`, so `KM_TO_SCENE` converts real km straight
-to scene units), axial tilt, sidereal day length, Moon constants (currently unused, kept
-for when the Moon is wired in), and the texture base path.
+to scene units), axial tilt, sidereal day length, Moon constants (unused, kept for when the
+Moon is wired in), and the texture base path.
 
 **`math.ts`** — `kmToScene()` (the one place km→scene-unit conversion actually happens) and
 a generic `clamp()`.
 
 **`helpers.ts`** — `disposeObject3D()` walks an object tree and disposes every
 geometry/material/texture it finds — called from `ngOnDestroy` so navigating away from the
-viewer doesn't leak GPU memory. `generateDemoCircularOrbit()` is explicitly marked **DEMO
-DATA ONLY** in its own doc comment: it fabricates a simple circular-orbit state-vector
-series so the whole pipeline (SatelliteManager → Orbit → rendered line + moving marker →
-camera auto-fit → HUD altitude readout) can be seen working end-to-end before the backend's
-SGP4 propagator is implemented. `earth-view.ts` currently seeds three satellites this way
-(`DEMO_SATELLITES`: a LEO, MEO, and GEO example) purely to have something realistic-looking
-to look at.
+viewer doesn't leak GPU memory. `generateDemoCircularOrbit()` is marked **DEMO DATA ONLY**
+in its own doc comment — it was used to exercise this rendering pipeline before the
+backend's propagator existed. It's no longer called from anywhere now that
+`GET /api/v1/simulations/{id}/propagate` is real (see `../viewer-3d.ts`); kept in place as
+a documented, honestly-labeled artifact rather than deleted, in case a future demo/storybook
+context wants a satellite with no backend call.
 
-## What's demo vs. real right now
+## What's real vs. not built yet
 
-- **Earth, camera, controls, lighting, atmosphere/clouds, the HUD, click-to-select, and the
-  whole rendering pipeline are real** — nothing about them changes once real orbital data
-  is available.
-- **The three satellites' orbits are fabricated** (`generateDemoCircularOrbit`), not SGP4
-  output. The backend's propagator (`apps/api/Apsis.Api/Propagation/Sgp4/`) is being built
-  separately; once `ISgp4Propagator`/`Sgp4Propagator` and the
-  `GET /api/v1/simulations/{id}/propagate` endpoint exist, replacing the
-  `DEMO_SATELLITES` block in `earth-view.ts`'s `seedDemoSatellites()` with a real HTTP call
-  is the only change needed — `SatelliteManager.addSatellite()` already accepts exactly the
-  shape a real backend response would produce.
+- **Earth, camera + auto-fit, controls, lighting, atmosphere/clouds, and the whole
+  rendering/satellite-track pipeline are real**, driven by actual propagated data from
+  `Modules/Simulations` — not fabricated.
+- **No HUD overlay, no click-to-select-a-satellite detail panel, no play/pause/time-scale
+  controls in the UI.** The orbital-parameters readout the viewer page shows
+  (`../viewer-3d.html`) is a separate Angular template reading the API's response directly —
+  it doesn't come from anything in this folder. The `input/` building blocks above exist for
+  a future click-to-select feature but aren't connected to anything yet.
 - **The Moon exists but isn't rendered** — `scene.ts` has working `createMoon()`/
-  `updateMoon()` functions, just not called from `earth-view.ts` yet (see the note in
-  `scene/`'s section above for why).
+  `updateMoon()`, just not called (see `scene/`'s section above for why).
 
 ## Routing / where this lives in the app
 
-`app.routes.ts` → `Shell` (top nav) → `orbital-simulator.routes.ts` →
-`/simulator/simulations/:id/view` → `viewer-3d/viewer-3d.ts`, which just renders
-`<app-earth-view>` inside a page header. The dashboard page
-(`orbital-simulator/dashboard/`) has a demo link straight to
-`/simulator/simulations/demo/view` — the `:id` isn't read by anything yet (demo data is
-hardcoded regardless of id), so any id value works; it exists so there's a real,
-click-through path to the viewer through normal navigation rather than a hardcoded
-temporary route.
+`app.routes.ts` → `simulator/simulations/:id/view` (a top-level route, deliberately *not*
+nested under `Shell` — see `app.routes.ts`'s comment for why) → `viewer-3d.ts`, which fetches
+the simulation + its propagated states, then renders `<app-earth-view [satellites]="...">`
+alongside the 2D `<app-ground-track>` alternative and the orbital-parameters readout panel.

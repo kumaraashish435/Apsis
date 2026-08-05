@@ -1,0 +1,19 @@
+<svg class="ground-track" viewBox="0 0 360 180" preserveAspectRatio="xMidYMid meet">
+  <rect x="0" y="0" width="360" height="180" class="ground-track__ocean" />
+
+  <!-- graticule: meridians/parallels every 30°, equator + prime meridian emphasized -->
+  @for (lon of [0, 30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330, 360]; track lon) {
+    <line [attr.x1]="lon" y1="0" [attr.x2]="lon" y2="180" class="ground-track__grid" [class.ground-track__grid--major]="lon === 180" />
+  }
+  @for (lat of [0, 30, 60, 90, 120, 150, 180]; track lat) {
+    <line x1="0" [attr.y1]="lat" x2="360" [attr.y2]="lat" class="ground-track__grid" [class.ground-track__grid--major]="lat === 90" />
+  }
+
+  @for (segment of pathSegments(); track $index) {
+    <path [attr.d]="segment" class="ground-track__path" />
+  }
+
+  @if (markerPosition(); as marker) {
+    <circle [attr.cx]="marker.x" [attr.cy]="marker.y" r="2.5" class="ground-track__marker" />
+  }
+</svg>

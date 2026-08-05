@@ -13,8 +13,12 @@ export class TopBar {
   /** Drives the red badge dot on the status icon — e.g. active system alerts. */
   readonly alertCount = input(0);
 
+  /** Signed-in user's display name; the sign-out button only renders when set. */
+  readonly userName = input<string | null>(null);
+
   readonly statusClick = output<void>();
   readonly notificationsClick = output<void>();
   readonly historyClick = output<void>();
   readonly menuClick = output<void>();
+  readonly signOutClick = output<void>();
 }

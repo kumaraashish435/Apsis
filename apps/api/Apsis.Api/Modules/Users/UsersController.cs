@@ -1,4 +1,8 @@
+using System.Security.Claims;
+using Apsis.Api.Data;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace Apsis.Api.Modules.Users;
 
@@ -9,14 +13,32 @@ namespace Apsis.Api.Modules.Users;
 /// </summary>
 [ApiController]
 [Route("api/v1/users")]
-public class UsersController : ControllerBase
+[Authorize]
+public class UsersController(ApsisDbContext db) : ControllerBase
 {
-    // TODO(Sprint 3-4): wire up ASP.NET Core Identity, JWT issuance, Google OAuth.
-    // See apps/api/README.md for the Sprint plan this controller belongs to.
-
+    /// <summary>Whoever the bearer token belongs to — any authenticated role.</summary>
     [HttpGet("me")]
-    public IActionResult GetCurrentUser()
+    public async Task<ActionResult<UserResponse>> GetCurrentUser()
     {
-        return Ok(new { message = "Auth not wired up yet — see apps/api/README.md" });
+        var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)
+            ?? User.FindFirstValue("sub")!);
+
+        var user = await db.Users.FindAsync(userId);
+        if (user is null)
+        {
+            return NotFound();
+        }
+
+        return Ok(UserResponse.FromEntity(user));
+    }
+
+    /// <summary>Admin-only: demonstrates role-based authorization on top of the [Authorize] above.</summary>
+    [HttpGet]
+    [Authorize(Roles = Roles.Admin)]
+    public async Task<ActionResult<List<UserResponse>>> ListUsers()
+    {
+        // SQLite can't translate ORDER BY on DateTimeOffset server-side — sort client-side.
+        var users = await db.Users.ToListAsync();
+        return Ok(users.OrderBy(u => u.CreatedAt).Select(UserResponse.FromEntity));
     }
 }

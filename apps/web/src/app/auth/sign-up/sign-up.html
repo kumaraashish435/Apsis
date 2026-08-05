@@ -1,0 +1,65 @@
+<section class="auth-page">
+  <div class="auth-card">
+    <div class="auth-brand">
+      <span class="auth-brand__title">APSIS</span>
+      <span class="auth-brand__subtitle">ORBITAL SIMULATOR</span>
+    </div>
+    <h1 class="auth-heading">Create your account</h1>
+
+    @if (errorMessage()) {
+      <div class="auth-error-banner" role="alert">{{ errorMessage() }}</div>
+    }
+
+    <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
+      <div class="auth-field">
+        <label for="displayName">Name</label>
+        <input
+          id="displayName"
+          type="text"
+          formControlName="displayName"
+          placeholder="Ada Lovelace"
+          autocomplete="name"
+        />
+        @if (form.controls.displayName.touched && form.controls.displayName.invalid) {
+          <span class="auth-field__error">Name is required.</span>
+        }
+      </div>
+
+      <div class="auth-field">
+        <label for="email">Email</label>
+        <input
+          id="email"
+          type="email"
+          formControlName="email"
+          placeholder="you@apsis.dev"
+          autocomplete="email"
+        />
+        @if (form.controls.email.touched && form.controls.email.invalid) {
+          <span class="auth-field__error">Enter a valid email address.</span>
+        }
+      </div>
+
+      <div class="auth-field">
+        <label for="password">Password</label>
+        <input
+          id="password"
+          type="password"
+          formControlName="password"
+          placeholder="At least 8 characters"
+          autocomplete="new-password"
+        />
+        @if (form.controls.password.touched && form.controls.password.invalid) {
+          <span class="auth-field__error">Password must be at least 8 characters.</span>
+        }
+      </div>
+
+      <button type="submit" class="auth-submit" [disabled]="submitting()">
+        {{ submitting() ? 'Creating account…' : 'Sign up' }}
+      </button>
+    </form>
+
+    <app-google-sign-in-button (signInError)="onGoogleError($event)" />
+
+    <p class="auth-switch">Already have an account? <a routerLink="/auth/sign-in">Sign in</a></p>
+  </div>
+</section>

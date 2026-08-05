@@ -1,4 +1,109 @@
 <section class="page">
-  <h1>Simulation Editor</h1>
-  <p>TLE / orbital element input form goes here — see the Product 1 doc for the full page spec.</p>
+  <div class="page__header">
+    <div>
+      <div class="page__title">{{ simulationId() ? 'Edit simulation' : 'New simulation' }}</div>
+      <div class="page__subtitle">Create a satellite from a TLE or classical orbital elements</div>
+    </div>
+    <a class="btn" routerLink="/simulator/dashboard">← Back</a>
+  </div>
+
+  @if (errorMessage()) {
+    <div class="error-banner" role="alert">{{ errorMessage() }}</div>
+  }
+
+  @if (loading()) {
+    <p class="page__subtitle">Loading…</p>
+  } @else {
+    <div class="card">
+      <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
+        <div class="form-field form-field--full">
+          <label for="name">Simulation name</label>
+          <input id="name" type="text" formControlName="name" placeholder="ISS pass" />
+          @if (form.controls.name.touched && form.controls.name.invalid) {
+            <span class="form-field__error">Name is required.</span>
+          }
+        </div>
+
+        <div class="input-type-toggle">
+          <button type="button" [class.active]="inputType() === 'Tle'" (click)="setInputType('Tle')">
+            TLE
+          </button>
+          <button type="button" [class.active]="inputType() === 'Elements'" (click)="setInputType('Elements')">
+            Classical elements
+          </button>
+        </div>
+
+        @if (inputType() === 'Tle') {
+          <div class="form-field form-field--full">
+            <label for="tleLine1">TLE line 1</label>
+            <input
+              id="tleLine1"
+              type="text"
+              formControlName="tleLine1"
+              placeholder="1 25544U 98067A   26217.02190500  .00005828  00000+0  11248-3 0  9996"
+              spellcheck="false"
+            />
+          </div>
+          <div class="form-field form-field--full">
+            <label for="tleLine2">TLE line 2</label>
+            <input
+              id="tleLine2"
+              type="text"
+              formControlName="tleLine2"
+              placeholder="2 25544  51.6318  58.4155 0007310  13.5287 346.5896 15.49349819579321"
+              spellcheck="false"
+            />
+            <span class="form-field__hint">Paste a two-line element set from a source like Celestrak.</span>
+          </div>
+        } @else {
+          <div class="form-grid">
+            <div class="form-field">
+              <label for="semiMajorAxisKm">Semi-major axis (km)</label>
+              <input id="semiMajorAxisKm" type="number" formControlName="semiMajorAxisKm" step="1" />
+            </div>
+            <div class="form-field">
+              <label for="eccentricity">Eccentricity</label>
+              <input id="eccentricity" type="number" formControlName="eccentricity" step="0.001" min="0" max="0.999" />
+            </div>
+            <div class="form-field">
+              <label for="inclinationDeg">Inclination (deg)</label>
+              <input id="inclinationDeg" type="number" formControlName="inclinationDeg" step="0.1" min="0" max="180" />
+            </div>
+            <div class="form-field">
+              <label for="raanDeg">RAAN (deg)</label>
+              <input id="raanDeg" type="number" formControlName="raanDeg" step="0.1" />
+            </div>
+            <div class="form-field">
+              <label for="argPerigeeDeg">Argument of perigee (deg)</label>
+              <input id="argPerigeeDeg" type="number" formControlName="argPerigeeDeg" step="0.1" />
+            </div>
+            <div class="form-field">
+              <label for="trueAnomalyDeg">True anomaly (deg)</label>
+              <input id="trueAnomalyDeg" type="number" formControlName="trueAnomalyDeg" step="0.1" />
+            </div>
+          </div>
+        }
+
+        <div class="form-grid">
+          <div class="form-field">
+            <label for="startTime">Propagation start</label>
+            <input id="startTime" type="datetime-local" formControlName="startTime" />
+          </div>
+          <div class="form-field">
+            <label for="endTime">Propagation end</label>
+            <input id="endTime" type="datetime-local" formControlName="endTime" />
+          </div>
+          <div class="form-field">
+            <label for="stepSeconds">Step (seconds)</label>
+            <input id="stepSeconds" type="number" formControlName="stepSeconds" min="1" />
+            <span class="form-field__hint">Smaller steps = smoother track, more points.</span>
+          </div>
+        </div>
+
+        <button type="submit" class="btn btn--primary" [disabled]="submitting()">
+          {{ submitting() ? 'Saving…' : simulationId() ? 'Save changes' : 'Create simulation' }}
+        </button>
+      </form>
+    </div>
+  }
 </section>

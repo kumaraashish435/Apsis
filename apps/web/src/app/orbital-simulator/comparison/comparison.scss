@@ -1,0 +1,68 @@
+@use '../page';
+
+.chart-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #cbd5e1;
+  margin: 1.25rem 0 0.75rem;
+}
+
+.chart {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.chart__grid {
+  stroke: rgba(148, 163, 184, 0.12);
+  stroke-width: 1;
+}
+
+.chart__axis {
+  stroke: rgba(148, 163, 184, 0.35);
+  stroke-width: 1;
+}
+
+.chart__tick {
+  fill: #64748b;
+  font-size: 9px;
+}
+
+.chart__tick--y {
+  text-anchor: end;
+}
+
+.chart__tick--x {
+  text-anchor: middle;
+}
+
+.chart__line {
+  fill: none;
+  stroke: #38bdf8;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.chart__crosshair {
+  stroke: rgba(226, 232, 240, 0.3);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+}
+
+.chart__dot {
+  fill: #38bdf8;
+  stroke: #0a0f1a;
+  stroke-width: 1.5;
+}
+
+.chart-tooltip {
+  margin-top: 0.5rem;
+  font-size: 0.8rem;
+  color: #e2e8f0;
+  font-variant-numeric: tabular-nums;
+}
+
+.chart-tooltip--muted {
+  color: #64748b;
+}

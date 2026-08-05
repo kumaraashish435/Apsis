@@ -1,0 +1,6 @@
+@if (!unavailable()) {
+  <div class="auth-divider"><span>or</span></div>
+  <div class="google-btn-container" #container></div>
+} @else {
+  <p class="auth-hint">Google sign-in isn't configured yet — use email and password below.</p>
+}

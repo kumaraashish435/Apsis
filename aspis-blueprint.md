@@ -40,7 +40,7 @@ It is the smallest unit of real value in the entire ASPIS vision: pure orbital m
 **Exactly what exists:**
 - Create a satellite from a TLE or classical orbital elements
 - Propagate with SGP4/SDP4
-- 2D ground-track view + 3D globe view (CesiumJS)
+- 2D ground-track view + 3D globe view (threejs)
 - Orbital parameter readout: altitude, period, inclination, eccentricity, RAAN, argument of perigee, true anomaly
 - Export (CZML, CSV, JSON)
 - Side-by-side comparison of two propagators (SGP4 vs. simple two-body Keplerian) showing divergence over time

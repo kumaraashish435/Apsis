@@ -1,0 +1,58 @@
+<section class="page">
+  <header class="shared-banner">
+    <span class="shared-banner__brand">APSIS <span class="shared-banner__accent">SHARED VIEW</span></span>
+    <a routerLink="/auth/sign-up" class="shared-banner__cta">Sign up to build your own →</a>
+  </header>
+
+  @if (loading()) {
+    <div class="viewer-status">Loading shared simulation…</div>
+  } @else if (notFound()) {
+    <div class="viewer-status viewer-status--error">
+      This link isn't valid — the simulation may have been unshared or deleted.
+    </div>
+  } @else {
+    <div class="viewer-toolbar">
+      <div class="viewer-toolbar__title">{{ simulation()?.name }}</div>
+
+      <div class="view-toggle">
+        <button type="button" [class.active]="viewMode() === '3d'" (click)="setViewMode('3d')">3D globe</button>
+        <button type="button" [class.active]="viewMode() === 'ground'" (click)="setViewMode('ground')">
+          Ground track
+        </button>
+      </div>
+
+      <div class="viewer-toolbar__actions">
+        <button type="button" class="btn btn--small" (click)="exportAs('csv')">Export CSV</button>
+        <button type="button" class="btn btn--small" (click)="exportAs('json')">Export JSON</button>
+        <button type="button" class="btn btn--small" (click)="exportAs('czml')">Export CZML</button>
+      </div>
+    </div>
+
+    <div class="viewer-body">
+      <div class="viewer-canvas" [class.viewer-canvas--hidden]="viewMode() !== '3d'">
+        <app-earth-view [satellites]="satelliteEntries()"></app-earth-view>
+      </div>
+      @if (viewMode() === 'ground') {
+        <div class="viewer-canvas">
+          <app-ground-track [states]="states()"></app-ground-track>
+        </div>
+      }
+
+      @if (elementsAtEpoch(); as e) {
+        <aside class="readout">
+          <h2>Orbital parameters <span class="readout__hint">at epoch</span></h2>
+          <dl>
+            <dt>Altitude</dt>
+            <dd>{{ e.altitudeKm | number: '1.0-1' }} km</dd>
+            <dt>Period</dt>
+            <dd>{{ e.periodSeconds / 60 | number: '1.1-1' }} min</dd>
+            <dt>Inclination</dt>
+            <dd>{{ e.inclinationDeg | number: '1.2-2' }}&deg;</dd>
+            <dt>Eccentricity</dt>
+            <dd>{{ e.eccentricity | number: '1.4-4' }}</dd>
+          </dl>
+        </aside>
+      }
+    </div>
+  }
+</section>

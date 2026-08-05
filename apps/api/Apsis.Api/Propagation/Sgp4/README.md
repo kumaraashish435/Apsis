@@ -8,17 +8,17 @@ Propagates a two-line element set (TLE) to a series of position/velocity state v
 
 ## How it works today
 
-`ISgp4Propagator` defines the contract (`Propagate(tleLine1, tleLine2, start, end, step) -> IReadOnlyList<StateVector>`) and `StateVector` is the shared shape (`Epoch, X, Y, Z, Vx, Vy, Vz`) that `Propagation/Keplerian`'s comparison output also uses, specifically so the two can be diffed directly. **No implementation exists yet** — this is the literal next thing to build.
+| File | Role |
+|---|---|
+| `ISgp4Propagator.cs` | The contract — `Propagate(tleLine1, tleLine2, start, end, step) -> IReadOnlyList<StateVector>`. `StateVector` (`Epoch, X, Y, Z, Vx, Vy, Vz`, km and km/s, TEME frame) is the shared shape `Propagation/Keplerian`'s comparison output also uses. |
+| `TLE.cs`, `ElsetRec.cs`, `SGP4.cs` | A pre-existing, faithful C# port of Vallado's reference SGP4/SDP4 algorithm (the `sgp4fix` comments throughout are Vallado's own). This is where the actual physics lives — over 1,300 lines, not something to rewrite casually. |
+| `Sgp4Propagator.cs` | The `ISgp4Propagator` implementation. A thin adapter, not a reimplementation: it owns none of the physics, it just drives `TLE.getRV(minutesSinceEpoch)` in a loop and converts between this interface's wall-clock `DateTimeOffset` API and the ported code's "minutes since epoch" API. Throws `Sgp4PropagationException` (carrying Vallado's numeric error code) when the underlying algorithm refuses to propagate further — almost always orbital decay. |
 
-## How it's meant to work once implemented
+Registered in `Program.cs` as `AddSingleton<ISgp4Propagator, Sgp4Propagator>()` — it's stateless, one instance is fine. **Not yet wired into `Modules/Simulations/SimulationsController`**, which still returns `501 Not Implemented` on `/propagate` — that's persistence/CRUD/DTO-shaping work, a separate task from proving the propagator itself is correct.
 
-1. Implement `ISgp4Propagator` — either a from-scratch implementation of Vallado's SGP4/SDP4 algorithm, or a well-vetted existing .NET port wrapped behind this interface (either is fine; what's not fine is skipping the validation step below regardless of which you choose).
-2. **Before this is trusted by anything else in the codebase**, it must pass the golden-file suite in `Apsis.Api.Tests/Propagation` — see that folder's README for the process. This is not optional or a "nice to have for later" — every downstream product's correctness assumption rests on this step actually happening.
-3. Register `ISgp4Propagator` in `Program.cs`'s DI container once implemented; `Modules/Simulations`' `SimulationsController` consumes it directly, in-process (no gRPC — see `docs/architecture/adr/ADR-0001-in-process-propagation.md`).
+## Correctness — the golden-file suite
 
-## Process: what "done" means for this module
-
-Not "it compiles" and not "it returns plausible-looking numbers." Done means: it matches Vallado's published SGP4 reference test vectors within their stated tolerance, for both near-Earth (SGP4) and deep-space (SDP4) test cases. If you only test near-Earth orbits, deep-space satellites (period > 225 minutes) will silently propagate incorrectly — this is a well-known SGP4 pitfall, not a hypothetical one.
+`Apsis.Api.Tests/Propagation/Sgp4VerificationTests.cs` checks this implementation against Vallado's own reference C++ output — see that folder's README for the full writeup, including one real, narrow, documented discrepancy the suite found (satellite 23599, a known "Lyddane choice" edge case) that's tracked rather than hidden.
 
 ## Deliberately out of scope here
 

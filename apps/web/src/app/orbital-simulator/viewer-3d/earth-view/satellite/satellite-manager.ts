@@ -3,6 +3,12 @@ import { Satellite } from './satellite';
 import { SatelliteStateVector } from './orbit';
 import { disposeObject3D, generateId } from '../utils/helpers';
 
+/** A named satellite's propagated track — the shape EarthView's `satellites` input expects. */
+export interface SatelliteEntry {
+  name: string;
+  states: SatelliteStateVector[];
+}
+
 export class SatelliteManager {
   private readonly satellites = new Map<string, Satellite>();
 

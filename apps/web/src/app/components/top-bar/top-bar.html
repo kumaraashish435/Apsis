@@ -59,5 +59,25 @@
         <path d="M4 7h16M4 12h16M4 17h16" stroke-linecap="round" />
       </svg>
     </button>
+
+    @if (userName()) {
+      <span class="top-bar__user" [title]="userName()">{{ userName() }}</span>
+      <button
+        type="button"
+        class="top-bar__icon-btn"
+        aria-label="Sign out"
+        title="Sign out"
+        (click)="signOutClick.emit()"
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+          <path
+            d="M15 4H6a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h9"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          />
+          <path d="M10 12h10M17 8.5 20.5 12 17 15.5" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+      </button>
+    }
   </div>
 </header>

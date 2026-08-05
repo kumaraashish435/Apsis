@@ -15,5 +15,6 @@ Move a component/service here the moment a **second** product needs it, not befo
 ## Likely future residents (not built yet, don't build ahead of need)
 
 - A chart-wrapper component, once Product 1's `comparison/` and Product 3's `telemetry-charts/` both need the same charting primitive.
-- An HTTP interceptor for auth token attachment, once `Modules/Users` issues real JWTs (Product 1, Sprint 3-4) — this one is close enough to certain that it's reasonable to add as soon as auth is real, rather than waiting for a second product.
 - Status-severity color/badge components, once Product 3's alerts and Product 5's anomaly feed both need consistent nominal/warning/critical styling.
+
+Previously listed here: an HTTP interceptor for auth token attachment. That's built now (`Modules/Users` issues real JWTs) — it lives in `../auth/auth.interceptor.ts`, next to the `AuthService` it depends on, not here. See `../auth/README.md`.

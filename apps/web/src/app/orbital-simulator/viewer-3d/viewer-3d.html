@@ -1,4 +1,75 @@
 <section class="page">
-  <app-top-bar></app-top-bar>
-  <app-earth-view></app-earth-view>
+  <app-top-bar [userName]="auth.user()?.displayName ?? null" (signOutClick)="auth.signOut()"></app-top-bar>
+
+  @if (loading()) {
+    <div class="viewer-status">Loading simulation…</div>
+  } @else if (errorMessage()) {
+    <div class="viewer-status viewer-status--error">
+      {{ errorMessage() }}
+      <a routerLink="/simulator/dashboard" class="btn">← Back to dashboard</a>
+    </div>
+  } @else {
+    <div class="viewer-toolbar">
+      <div class="viewer-toolbar__title">
+        <a routerLink="/simulator/dashboard" class="viewer-toolbar__back" aria-label="Back to dashboard">←</a>
+        {{ simulation()?.name }}
+      </div>
+
+      <div class="view-toggle">
+        <button type="button" [class.active]="viewMode() === '3d'" (click)="setViewMode('3d')">3D globe</button>
+        <button type="button" [class.active]="viewMode() === 'ground'" (click)="setViewMode('ground')">
+          Ground track
+        </button>
+      </div>
+
+      <div class="viewer-toolbar__actions">
+        @if (simulation()?.inputType === 'Tle') {
+          <a class="btn btn--small" [routerLink]="['/simulator/compare']" [queryParams]="{ id: simulationId }">
+            Compare
+          </a>
+        }
+        <a class="btn btn--small" [routerLink]="['/simulator/simulations', simulationId]">Edit</a>
+        <button type="button" class="btn btn--small" (click)="exportAs('csv')">Export CSV</button>
+        <button type="button" class="btn btn--small" (click)="exportAs('json')">Export JSON</button>
+        <button type="button" class="btn btn--small" (click)="exportAs('czml')">Export CZML</button>
+      </div>
+    </div>
+
+    <div class="viewer-body">
+      <div class="viewer-canvas" [class.viewer-canvas--hidden]="viewMode() !== '3d'">
+        <app-earth-view [satellites]="satelliteEntries()"></app-earth-view>
+      </div>
+      @if (viewMode() === 'ground') {
+        <div class="viewer-canvas">
+          <app-ground-track [states]="states()"></app-ground-track>
+        </div>
+      }
+
+      @if (elementsAtEpoch(); as e) {
+        <aside class="readout">
+          <h2>Orbital parameters <span class="readout__hint">at epoch</span></h2>
+          <dl>
+            <dt>Altitude</dt>
+            <dd>{{ e.altitudeKm | number: '1.0-1' }} km</dd>
+            <dt>Apogee / Perigee alt.</dt>
+            <dd>{{ e.apogeeAltitudeKm | number: '1.0-1' }} / {{ e.perigeeAltitudeKm | number: '1.0-1' }} km</dd>
+            <dt>Semi-major axis</dt>
+            <dd>{{ e.semiMajorAxisKm | number: '1.0-1' }} km</dd>
+            <dt>Period</dt>
+            <dd>{{ e.periodSeconds / 60 | number: '1.1-1' }} min</dd>
+            <dt>Inclination</dt>
+            <dd>{{ e.inclinationDeg | number: '1.2-2' }}&deg;</dd>
+            <dt>Eccentricity</dt>
+            <dd>{{ e.eccentricity | number: '1.4-4' }}</dd>
+            <dt>RAAN</dt>
+            <dd>{{ e.raanDeg | number: '1.2-2' }}&deg;</dd>
+            <dt>Argument of perigee</dt>
+            <dd>{{ e.argPerigeeDeg | number: '1.2-2' }}&deg;</dd>
+            <dt>True anomaly</dt>
+            <dd>{{ e.trueAnomalyDeg | number: '1.2-2' }}&deg;</dd>
+          </dl>
+        </aside>
+      }
+    </div>
+  }
 </section>

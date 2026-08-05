@@ -1,0 +1,22 @@
+@use '../page';
+
+.glossary {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.glossary__entry {
+  dt {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: #38bdf8;
+    margin-bottom: 0.3rem;
+  }
+
+  dd {
+    font-size: 0.85rem;
+    color: #cbd5e1;
+    line-height: 1.55;
+  }
+}

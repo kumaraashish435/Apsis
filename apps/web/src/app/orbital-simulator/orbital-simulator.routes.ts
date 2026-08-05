@@ -4,6 +4,10 @@ import { Routes } from '@angular/router';
  * Product 1 — Orbital Simulator routes.
  * Lazy-loaded as a whole from app.routes.ts so later products
  * (Mission Planner, Mission Control, ...) don't pull this in until needed.
+ *
+ * `simulations/:id/view` is NOT here — it's a top-level route in
+ * app.routes.ts, deliberately outside Shell's chrome. See that file's
+ * comment for why.
  */
 export const ORBITAL_SIMULATOR_ROUTES: Routes = [
   { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
@@ -20,10 +24,6 @@ export const ORBITAL_SIMULATOR_ROUTES: Routes = [
     path: 'simulations/:id',
     loadComponent: () =>
       import('./simulation-editor/simulation-editor').then((m) => m.SimulationEditor),
-  },
-  {
-    path: 'simulations/:id/view',
-    loadComponent: () => import('./viewer-3d/viewer-3d').then((m) => m.Viewer3d),
   },
   {
     path: 'compare',

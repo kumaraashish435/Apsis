@@ -1,9 +1,18 @@
-import { AfterViewInit, Component, ElementRef, NgZone, OnDestroy, ViewChild } from '@angular/core';
+import {
+  AfterViewInit,
+  Component,
+  ElementRef,
+  NgZone,
+  OnDestroy,
+  ViewChild,
+  effect,
+  input,
+} from '@angular/core';
 import * as THREE from 'three';
 import type { OrbitControls } from 'three-stdlib';
 
 import { createScene } from './scene/scene';
-import { createCamera } from './camera/camera';
+import { createCamera, fitCameraToBoundingSphere } from './camera/camera';
 import { createRenderer } from './renderer/renderer';
 import { createOrbitControls } from './camera/orbit-controls';
 import { OrbitControlsGate } from './input/orbit-controls-gate';
@@ -12,8 +21,10 @@ import { AnimationLoop } from './renderer/animation-loop';
 import { createEarth } from './earth/earth';
 import { createLights } from './earth/lights';
 import { Simulation } from './simulation/simulation';
-import { EARTH_AXIAL_TILT_DEG, EARTH_SIDEREAL_DAY_SECONDS } from './utils/constants';
+import { SatelliteEntry, SatelliteManager } from './satellite/satellite-manager';
+import { EARTH_AXIAL_TILT_DEG, EARTH_SIDEREAL_DAY_SECONDS, SCENE_EARTH_RADIUS } from './utils/constants';
 import { disposeObject3D } from './utils/helpers';
+import { kmToScene } from './utils/math';
 
 @Component({
   selector: 'app-earth-view',
@@ -25,10 +36,15 @@ export class EarthView implements AfterViewInit, OnDestroy {
   @ViewChild('canvasContainer')
   container!: ElementRef<HTMLDivElement>;
 
+  /** Real propagated tracks to render — set once GET .../propagate resolves. See ../viewer-3d.ts. */
+  readonly satellites = input<SatelliteEntry[]>([]);
+
   private scene!: THREE.Scene;
   private camera!: THREE.PerspectiveCamera;
   private renderer!: THREE.WebGLRenderer;
   private controls!: OrbitControls;
+  private satelliteManager?: SatelliteManager;
+  private sceneReady = false;
 
   // Two nested groups, not one: earthTilt is set once and never touched
   // again; earthSpin is its CHILD and gets rotated every frame. Because
@@ -51,7 +67,14 @@ export class EarthView implements AfterViewInit, OnDestroy {
 
   private readonly simulation = new Simulation(600);
 
-  constructor(private readonly zone: NgZone) {}
+  constructor(private readonly zone: NgZone) {
+    effect(() => {
+      const entries = this.satellites();
+      if (this.sceneReady) {
+        this.applySatellites(entries);
+      }
+    });
+  }
 
   ngAfterViewInit(): void {
     const el = this.container.nativeElement;
@@ -84,6 +107,14 @@ export class EarthView implements AfterViewInit, OnDestroy {
       this.controls.update(),
     );
 
+    // Satellite groups live under earthTilt (the constant-tilt frame), not
+    // earthSpin (which additionally rotates every frame to show Earth's own
+    // rotation) — orbit positions are in the inertial ECI/TEME frame, so they
+    // must NOT spin along with the ground beneath them.
+    this.satelliteManager = new SatelliteManager(this.earthTilt);
+    this.sceneReady = true;
+    this.applySatellites(this.satellites());
+
     // Run the render loop outside Angular's zone — requestAnimationFrame at
     // ~60fps would otherwise trigger a full change-detection pass on every
     // single frame for as long as this component is alive.
@@ -93,9 +124,36 @@ export class EarthView implements AfterViewInit, OnDestroy {
     });
   }
 
+  private applySatellites(entries: SatelliteEntry[]): void {
+    if (!this.satelliteManager) {
+      return;
+    }
+
+    this.satelliteManager.dispose();
+    for (const entry of entries) {
+      if (entry.states.length >= 2) {
+        this.satelliteManager.addSatellite(entry.name, entry.states);
+      }
+    }
+    this.interactiveObjects.push(...this.satelliteManager.getGroups());
+
+    if (entries.length > 0) {
+      const maxRadiusScene = Math.max(
+        ...entries.flatMap((e) => e.states.map((s) => kmToScene(s.xKm, s.yKm, s.zKm).length())),
+      );
+      fitCameraToBoundingSphere(
+        this.camera,
+        this.controls,
+        new THREE.Sphere(new THREE.Vector3(0, 0, 0), maxRadiusScene),
+        SCENE_EARTH_RADIUS * 1.3,
+      );
+    }
+  }
+
   private onFrame(deltaSeconds: number): void {
     const simSeconds = this.simulation.tick(deltaSeconds);
     this.earthSpin.rotation.y = (simSeconds / EARTH_SIDEREAL_DAY_SECONDS) * Math.PI * 2;
+    this.satelliteManager?.update(simSeconds);
 
     this.controls.update();
     this.renderer.render(this.scene, this.camera);
@@ -104,6 +162,7 @@ export class EarthView implements AfterViewInit, OnDestroy {
   ngOnDestroy(): void {
     this.animationLoop?.stop();
     this.resizeHandler?.dispose();
+    this.satelliteManager?.dispose();
     if (this.scene) disposeObject3D(this.scene);
     this.renderer?.dispose();
   }

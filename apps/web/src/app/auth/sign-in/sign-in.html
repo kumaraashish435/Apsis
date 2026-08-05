@@ -1,0 +1,55 @@
+<section class="auth-page">
+  <div class="auth-card">
+    <div class="auth-brand">
+      <span class="auth-brand__title">APSIS</span>
+      <span class="auth-brand__subtitle">ORBITAL SIMULATOR</span>
+    </div>
+    <h1 class="auth-heading">Sign in</h1>
+
+    @if (errorMessage()) {
+      <div class="auth-error-banner" role="alert">{{ errorMessage() }}</div>
+    }
+
+    <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
+      <div class="auth-field">
+        <label for="email">Email</label>
+        <input
+          id="email"
+          type="email"
+          formControlName="email"
+          placeholder="you@apsis.dev"
+          autocomplete="email"
+        />
+        @if (form.controls.email.touched && form.controls.email.invalid) {
+          <span class="auth-field__error">Enter a valid email address.</span>
+        }
+      </div>
+
+      <div class="auth-field">
+        <label for="password">Password</label>
+        <input
+          id="password"
+          type="password"
+          formControlName="password"
+          placeholder="••••••••"
+          autocomplete="current-password"
+        />
+        @if (form.controls.password.touched && form.controls.password.invalid) {
+          <span class="auth-field__error">Password is required.</span>
+        }
+      </div>
+
+      <button type="submit" class="auth-submit" [disabled]="submitting()">
+        {{ submitting() ? 'Signing in…' : 'Sign in' }}
+      </button>
+    </form>
+
+    <app-google-sign-in-button (signInError)="onGoogleError($event)" />
+
+    <div class="auth-hint">
+      Default account — <strong>admin&#64;apsis.dev</strong> / <strong>Apsis#2026!</strong>
+    </div>
+
+    <p class="auth-switch">Don't have an account? <a routerLink="/auth/sign-up">Sign up</a></p>
+  </div>
+</section>

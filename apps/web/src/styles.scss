@@ -3,3 +3,12 @@
     margin: 0;
     padding: 0;
 }
+
+/* Dark space theme baseline — every page (top-bar, auth, dashboard, editor,
+   viewer) assumes a dark background; without this the default white <body>
+   flashes behind anything that doesn't set its own background explicitly. */
+body {
+  background: #0a0f1a;
+  color: #e2e8f0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}

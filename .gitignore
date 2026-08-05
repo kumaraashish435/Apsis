@@ -31,3 +31,8 @@ Thumbs.db
 *.env
 .env.*
 appsettings.*.local.json
+
+# Local SQLite dev database (apps/api) — see apps/api/Apsis.Api/Modules/Users/README.md
+*.db
+*.db-shm
+*.db-wal

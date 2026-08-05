@@ -1,4 +1,67 @@
 <section class="page">
-  <h1>Orbital Simulator</h1>
-  <p>Saved simulations list goes here — see the Product 1 doc for the full page spec.</p>
+  <div class="page__header">
+    <div>
+      <div class="page__title">Orbital Simulator</div>
+      <div class="page__subtitle">Your saved simulations</div>
+    </div>
+    <a class="btn btn--primary" routerLink="/simulator/simulations/new">+ New simulation</a>
+  </div>
+
+  @if (errorMessage()) {
+    <div class="error-banner" role="alert">{{ errorMessage() }}</div>
+  }
+
+  @if (loading()) {
+    <p class="page__subtitle">Loading…</p>
+  } @else if (items().length === 0) {
+    <div class="empty-state">
+      <p>No simulations yet.</p>
+      <p>Create one from a TLE or classical orbital elements to get started.</p>
+    </div>
+  } @else {
+    <div class="card">
+      <table class="sim-table">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Input</th>
+            <th>Window</th>
+            <th>Sharing</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (sim of items(); track sim.id) {
+            <tr>
+              <td class="sim-table__name">{{ sim.name }}</td>
+              <td>{{ inputSummary(sim) }}</td>
+              <td>{{ sim.startTime | date: 'MMM d, y HH:mm' }} – {{ sim.endTime | date: 'MMM d, y HH:mm' }}</td>
+              <td>
+                @if (sim.isPublic) {
+                  <span class="badge badge--public">Shared</span>
+                } @else {
+                  <span class="badge">Private</span>
+                }
+              </td>
+              <td>
+                <div class="sim-table__actions">
+                  <a class="btn btn--small" [routerLink]="['/simulator/simulations', sim.id, 'view']">View</a>
+                  <a class="btn btn--small" [routerLink]="['/simulator/simulations', sim.id]">Edit</a>
+                  <button type="button" class="btn btn--small" (click)="toggleShare(sim)">
+                    {{ sim.isPublic ? 'Unshare' : 'Share' }}
+                  </button>
+                  @if (sim.isPublic) {
+                    <button type="button" class="btn btn--small" (click)="copyShareLink(sim)">
+                      {{ copiedId() === sim.id ? 'Copied!' : 'Copy link' }}
+                    </button>
+                  }
+                  <button type="button" class="btn btn--small btn--danger" (click)="remove(sim)">Delete</button>
+                </div>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
 </section>
