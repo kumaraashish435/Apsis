@@ -3,7 +3,6 @@
 
 **Company:** ASPIS
 **Mission:** modern cloud-native software for spacecraft engineering, mission operations, simulation, and AI.
-**Long-term identity:** *GitHub + Figma + Autodesk + Unity + Mission Control + AI — for aerospace.*
 
 **Strategic thesis, stated up front because it drives every decision below:** a 2-person team building one large integrated platform before anyone has used any of it is the single most common failure mode in software companies at this scale — you spend years and ship to nobody. ASPIS instead ships **five independently useful products, in strict order**, each small enough to build with two people, each capable of generating users and revenue on its own, and each engineered so that the next product *extends* it rather than *replaces* it. The unified "ASPIS Platform" is not built directly — it emerges as the byproduct of five products sharing a disciplined foundation from day one.
 

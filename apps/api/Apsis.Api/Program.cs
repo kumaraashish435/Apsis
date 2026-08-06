@@ -7,13 +7,11 @@ using Apsis.Api.Security;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Scalar.AspNetCore;
 
-var builder = WebApplication.CreateBuilder(args);
+var builder = WebApplication.CreateBuilder(args); 
 
 // Add services to the container.
-// Product 1 stays a modular monolith: every Modules/* folder below is a
-// namespace inside this one project, not a separate service. See
-// docs/architecture/folder-structure.md before adding a new project/service.
 
 builder.Services.AddControllers()
     // Enums as "Tle"/"Elements" strings over the wire, not magic 0/1 integers —
@@ -24,7 +22,7 @@ builder.Services.AddControllers()
 builder.Services.AddOpenApi();
 
 // SQLite for now (zero local setup) — swap the provider + connection string
-// for Npgsql when Postgres infra lands; see Modules/Users/README.md.
+// Later we can switch to Postgres or SQL Server .
 builder.Services.AddDbContext<ApsisDbContext>(options =>
     options.UseSqlite(builder.Configuration.GetConnectionString("Default")));
 
@@ -72,6 +70,7 @@ var app = builder.Build();
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
+    app.MapScalarApiReference();
 }
 
 app.UseHttpsRedirection();
