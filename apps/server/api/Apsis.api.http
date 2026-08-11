@@ -1,0 +1,6 @@
+@Apsis.api_HostAddress = http://localhost:5234
+
+GET {{Apsis.api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
