@@ -2,3 +2,45 @@ bin
 obj
 node_modules
 .vscode
+
+
+/build/
+/cmake-build-*/
+
+# Compiled files
+*.o
+*.obj
+*.a
+*.so
+*.dylib
+*.dll
+*.exe
+
+# IDE
+.vscode/
+.idea/
+
+# macOS
+.DS_Store
+
+# CMake generated
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+CTestTestfile.cmake
+Makefile
+compile_commands.json
+
+# Dependencies/build artifacts
+_deps/
+
+# Docker
+.docker/
+
+# Python later
+__pycache__/
+*.pyc
+.venv/
+
+# Logs
+*.log
