@@ -1,18 +1,11 @@
-cmake_minimum_required(VERSION 3.25)
-project(Apsis VERSION 0.1.0
-    DESCRIPTION "Orbital simulation and astrodynamics platform"
-    LANGUAGES CXX)
+cmake_minimum_required(VERSION 3.20)
+project(Apsis LANGUAGES CXX)
 
-set(CMAKE_CXX_STANDARD 20)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_EXTENSIONS OFF)
+# ctest only discovers tests below directories where enable_testing() ran in
+# THIS (the top-level) scope, not just in the included subdirectory below.
+enable_testing()
 
-set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-
-
-option(ORBITCORE_BUILD_TESTS
-    "Build OrbitCore tests"
-    ON
-)
-
-add_subdirectory(engine)
+# apps/engine is self-contained and independently buildable; this just wires
+# it into a root-level build. Other apps/ directories (web, api, ...) are
+# separate stacks with their own toolchains and aren't part of this build.
+add_subdirectory(apps/engine)

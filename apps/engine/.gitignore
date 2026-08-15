@@ -1,0 +1,5 @@
+# Unified build output for both CMake and Premake (see build systems below)
+/build/
+
+# macOS
+.DS_Store

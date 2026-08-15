@@ -1,0 +1,30 @@
+# Brings up the API and web frontend as long-running services.
+#
+#   docker compose up --build           # api (:8080) + web (:4000)
+#   docker compose up --build api       # just the API
+#   docker compose up --build web       # just the web frontend
+#
+# The engine is a one-shot CLI tool, not a server, so it's not part of the
+# default `up` -- run it directly instead:
+#
+#   docker compose run --rm engine                       # built-in demo
+#   docker compose run --rm engine SampleInputs/iss.json  # any sample format
+#   docker compose build engine                           # also runs the test suite
+
+services:
+  api:
+    build:
+      context: ./apps/server/api
+    ports:
+      - "8080:8080"
+
+  web:
+    build:
+      context: ./apps/web
+    ports:
+      - "4000:4000"
+
+  engine:
+    build:
+      context: ./apps/engine
+    profiles: ["tools"]
