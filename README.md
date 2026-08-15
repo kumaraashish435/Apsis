@@ -96,9 +96,19 @@ make engine-clean      # remove build/ (both systems)
 
 ### Run
 
+The binary lands in `build/bin/` either way, but `SampleInputs/` is always
+under `apps/engine/` — so the path to it depends on where you built from:
+
 ```sh
+# built from apps/engine/ (both build/ and SampleInputs/ are right there)
+cd apps/engine
 ./build/bin/App                          # built-in demo (ISS, CSV format)
 ./build/bin/App SampleInputs/iss.tle      # propagate a specific file
+
+# built from the repo root via `make engine-cmake` (build/ is at the root,
+# but SampleInputs/ is still under apps/engine/)
+./build/bin/App                                     # built-in demo
+./build/bin/App apps/engine/SampleInputs/iss.tle      # propagate a specific file
 ```
 
 [`SampleInputs/`](apps/engine/SampleInputs) has one real, live-fetched
