@@ -1,3 +1,9 @@
-bin/
-obj/
+**/bin
+**/obj
+**/dist
+**/.angular
 **/.git
+**/.vscode
+**/node_modules
+**/TestResults
+**/.idea
