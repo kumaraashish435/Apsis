@@ -1,5 +1,9 @@
-build/
+**/bin
+**/obj
+**/dist
+**/.angular
 **/.git
-*.o
-*.obj
-*.a
+**/.vscode
+**/node_modules
+**/TestResults
+**/.idea

@@ -29,12 +29,11 @@ RUN cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DENGINE_BUILD_TESTS=ON \
     && ctest --test-dir build --output-on-failure
 
 
-FROM ubuntu:22.04 AS runtime
+FROM debian:bookworm-slim AS runtime
 
-# libstdc++/libgcc are already part of the base image; only ca-certificates
-# is added (harmless, small, useful if this ever fetches GP data over TLS).
+# Keep runtime small: only install certs and C++ runtime libraries required by App.
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends ca-certificates \
+    && apt-get install -y --no-install-recommends ca-certificates libstdc++6 libgcc-s1 \
     && rm -rf /var/lib/apt/lists/*
 
 # Same absolute path as the build stage: the App binary has its AstroStds
