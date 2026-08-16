@@ -323,6 +323,19 @@ docker compose run --rm engine SampleInputs/iss.json      # any sample file
 docker compose build engine                                # also runs the test suite
 ```
 
+### Cleanup
+
+`docker run --rm` / `docker compose run --rm` already remove containers on
+exit, so there's normally nothing to do. Images and build cache stick
+around (harmless, just disk space) — remove them if you want a clean
+slate:
+
+```sh
+docker rmi apsis-engine apsis-api apsis-web   # remove the built images
+docker builder prune                           # clear dangling build cache
+docker compose down                            # stop/remove compose-managed containers
+```
+
 ---
 
 ## Project structure
