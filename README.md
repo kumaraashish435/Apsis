@@ -69,16 +69,34 @@ brew install gcc
 
 ### Build
 
-From `apps/engine/` (or from the repo root, replacing paths accordingly):
+CMake and Premake put binaries in **different layouts** — CMake outputs
+flatly to `build/bin/`, Premake nests under
+`build/bin/<system>/<config>/<project-name>/`. Pick one system and use its
+matching Run/Test commands below; don't mix paths between them.
+
+#### CMake
 
 ```sh
-# CMake
+# from apps/engine/
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug
 cmake --build build
 
-# Premake (macOS/Linux)
+# from the repo root
+make engine-cmake      # = cmake -S . -B build && cmake --build build
+```
+
+Binary: `build/bin/App` (flat, no OS/config subfolders), relative to
+wherever you ran the `cmake` commands from.
+
+#### Premake
+
+```sh
+# from apps/engine/ (macOS/Linux)
 premake5 gmake2
 make -C build/premake config=debug
+
+# from the repo root
+make engine             # = premake5 gmake2 && make -C apps/engine/build/premake config=debug
 ```
 
 ```powershell
@@ -86,29 +104,39 @@ make -C build/premake config=debug
 .\Vendor\Binaries\Premake\Windows\premake5.exe vs2022
 ```
 
-From the **repo root**, a convenience `Makefile` wraps the same thing:
+Binary: `build/bin/<system>/<config>/App/App` — e.g. on macOS Debug that's
+`build/bin/macosx/Debug/App/App` (Linux: `linux`, Windows:
+`windows/.../App.exe`), relative to wherever you ran `premake5`/`make`
+from. `<config>` is capitalized (`Debug`, `Release`, `Dist`) even though
+`config=debug` on the command line is lowercase.
 
 ```sh
-make engine-cmake      # cmake -S . -B build && cmake --build build
-make engine            # premake5 gmake2 && make -C apps/engine/build/premake
-make engine-clean      # remove build/ (both systems)
+make engine-clean      # remove build/ (both systems, both apps/engine/build and root build/)
 ```
 
 ### Run
 
-The binary lands in `build/bin/` either way, but `SampleInputs/` is always
-under `apps/engine/` — so the path to it depends on where you built from:
+`SampleInputs/` is always under `apps/engine/`, regardless of where you
+built from. Match the binary path to which system you built with, above:
 
 ```sh
-# built from apps/engine/ (both build/ and SampleInputs/ are right there)
+# CMake, built from apps/engine/
 cd apps/engine
 ./build/bin/App                          # built-in demo (ISS, CSV format)
 ./build/bin/App SampleInputs/iss.tle      # propagate a specific file
 
-# built from the repo root via `make engine-cmake` (build/ is at the root,
-# but SampleInputs/ is still under apps/engine/)
-./build/bin/App                                     # built-in demo
-./build/bin/App apps/engine/SampleInputs/iss.tle      # propagate a specific file
+# CMake, built from the repo root (`make engine-cmake`)
+./build/bin/App
+./build/bin/App apps/engine/SampleInputs/iss.tle
+
+# Premake, built from apps/engine/
+cd apps/engine
+./build/bin/macosx/Debug/App/App
+./build/bin/macosx/Debug/App/App SampleInputs/iss.tle
+
+# Premake, built from the repo root (`make engine`)
+./apps/engine/build/bin/macosx/Debug/App/App
+./apps/engine/build/bin/macosx/Debug/App/App apps/engine/SampleInputs/iss.tle
 ```
 
 [`SampleInputs/`](apps/engine/SampleInputs) has one real, live-fetched
@@ -130,7 +158,9 @@ The format is auto-detected — no flag needed. Every satellite loaded gets
 propagated to the current time and printed with a `[PASS]`/`[FAIL]` tag (a
 loose "is this physically plausible" sanity check — inside Earth's radius
 and below ~45,000 km). Real validation against exact expected numbers is
-what the test suite below does.
+what the test suite below does. (Example below uses the CMake path, built
+from `apps/engine/`; substitute your own path from [Run](#run) above if
+you used Premake or built from the repo root.)
 
 ```
 $ ./build/bin/App SampleInputs/goes16.tle
@@ -144,10 +174,17 @@ Loaded 1 satellite(s) from SampleInputs/goes16.tle
 ### Test
 
 ```sh
+# CMake, from wherever you ran `cmake -S . -B build` (or repo root for `make engine-cmake`)
 cmake --build build --target Tests   # if not already built
 ctest --test-dir build --output-on-failure
 # or run the binary directly:
 ./build/bin/Tests
+
+# Premake, from apps/engine/
+./build/bin/macosx/Debug/Tests/Tests
+
+# Premake, from the repo root (`make engine`)
+./apps/engine/build/bin/macosx/Debug/Tests/Tests
 ```
 
 11 tests, all currently passing:
